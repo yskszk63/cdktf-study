@@ -7,8 +7,8 @@ nop:
 
 .PHONY: deploy
 deploy:
-	AWS_PROFILE=$(AWS_PROFILE) npx cdktf-cli deploy
+	AWS_PROFILE=$(AWS_PROFILE) npx cdktf deploy
 
 .PHONY: destroy
 destroy:
-	AWS_PROFILE=$(AWS_PROFILE) npx cdktf-cli destroy
+	AWS_PROFILE=$(AWS_PROFILE) npx cdktf destroy
