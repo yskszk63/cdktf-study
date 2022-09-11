@@ -1,6 +1,38 @@
+import path from "node:path";
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { Construct } from "constructs";
-import { App, TerraformStack } from "cdktf";
-import { AwsProvider, s3, iam } from "@cdktf/provider-aws";
+import { App, TerraformStack, TerraformAsset, AssetType } from "cdktf";
+import { AwsProvider, iam, lambdafunction, apigatewayv2 } from "@cdktf/provider-aws";
+import * as esbuild from "esbuild";
+
+class TsFunction extends Construct {
+  asset: TerraformAsset;
+
+  constructor(scope: Construct, id: string, props: { path: string }) {
+    super(scope, id);
+
+    const wd = path.resolve(path.dirname(props.path));
+    esbuild.buildSync({
+      entryPoints: [path.basename(props.path)],
+      platform: "node",
+      target: "es2022",
+      bundle: true,
+      format: "esm",
+      sourcemap: "external",
+      outdir: "dist",
+      absWorkingDir: wd,
+    });
+    const dist = path.join(wd, "dist");
+    fs.writeFileSync(path.join(dist, "package.json"), '{"type":"module"}');
+
+    this.asset = new TerraformAsset(this, "lambda-asset", {
+      path: dist,
+      type: AssetType.ARCHIVE,
+    });
+  }
+}
 
 class MyStack extends TerraformStack {
   constructor(scope: Construct, name: string) {
@@ -29,7 +61,31 @@ class MyStack extends TerraformStack {
       role: role.name,
     });
 
-    new s3.S3Bucket(this, "testbucket");
+    const code = new TsFunction(this, "code", {
+      path: fileURLToPath(new URL("./app/index.ts", import.meta.url)),
+    });
+
+    const lambda = new lambdafunction.LambdaFunction(this, "api", {
+      functionName: "cdktf-study-function",
+      handler: "index.handler",
+      runtime: "nodejs16.x",
+      role: role.arn,
+      filename: code.asset.path,
+      sourceCodeHash: code.asset.assetHash,
+    });
+
+    const api = new apigatewayv2.Apigatewayv2Api(this, "api-gw", {
+      name: "cdktf-study-api",
+      protocolType: "HTTP",
+      target: lambda.arn,
+    });
+
+    new lambdafunction.LambdaPermission(this, "api-gw-lambda", {
+      functionName: lambda.functionName,
+      action: "lambda:InvokeFunction",
+      principal: "apigateway.amazonaws.com",
+      sourceArn: `${api.executionArn}/*/*`,
+    });
   }
 }
 
