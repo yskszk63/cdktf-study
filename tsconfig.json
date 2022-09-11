@@ -9,7 +9,7 @@
     "lib": [
       "es2018"
     ],
-    "module": "CommonJS",
+    "module": "NodeNext",
     "noEmitOnError": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": true,
@@ -32,5 +32,8 @@
   "exclude": [
     "node_modules",
     "cdktf.out"
-  ]
+  ],
+  "ts-node": {
+    "esm": true
+  }
 }

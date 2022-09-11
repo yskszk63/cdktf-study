@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "main.js",
   "types": "main.ts",
+  "type": "module",
   "license": "MPL-2.0",
   "private": true,
   "scripts": {
